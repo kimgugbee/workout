@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>운동 기록</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --panel-2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #8b93a3;
+    --accent: #4c8dff;
+    --accent-dim: #2b3b5c;
+    --done: #35c46b;
+    --done-dim: #1e3a2a;
+    --danger: #ff5c5c;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    line-height: 1.4;
+    padding-bottom: 80px;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 16px; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(15,17,21,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner { max-width: 620px; margin: 0 auto; padding: 12px 16px; }
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .title .emoji { margin-right: 6px; }
+  .header-actions { display: flex; gap: 6px; }
+
+  .date-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .date-nav .arrow {
+    width: 38px; height: 38px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .date-display {
+    flex: 1; text-align: center;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 10px;
+    position: relative; cursor: pointer;
+  }
+  .date-display .d-main { font-size: 16px; font-weight: 700; }
+  .date-display .d-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .date-display.today { border-color: var(--accent); }
+  .date-display input[type="date"] {
+    position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
+    border: none; cursor: pointer;
+  }
+
+  /* Buttons */
+  button {
+    font-family: inherit; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 12px; font-size: 14px;
+    cursor: pointer; transition: background .12s, border-color .12s, transform .05s;
+  }
+  button:active { transform: scale(0.97); }
+  button.ghost { background: transparent; }
+  button.accent { background: var(--accent-dim); border-color: var(--accent); }
+  button.small { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
+  button.icon { padding: 8px 10px; }
+
+  /* Summary bar */
+  .summary {
+    display: flex; gap: 10px; margin: 16px 0 8px;
+  }
+  .stat {
+    flex: 1; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px;
+  }
+  .stat .num { font-size: 22px; font-weight: 800; }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat.hl .num { color: var(--done); }
+
+  /* Category */
+  .category {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+  }
+  .cat-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px; background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-name { font-weight: 700; font-size: 15px; flex: 1; }
+  .cat-name input {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 5px 8px; font-size: 15px; font-weight: 700; width: 100%;
+  }
+  .cat-count { font-size: 12px; color: var(--muted); }
+
+  /* Exercise row */
+  .exercise {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+  }
+  .exercise:last-child { border-bottom: none; }
+  .ex-name { flex: 1; font-size: 15px; }
+  .exercise.done { background: var(--done-dim); }
+  .exercise.done .ex-name { color: #cfeedd; }
+  .ex-name input.rename {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 5px 8px; font-size: 15px; width: 100%;
+  }
+  .count-input {
+    width: 78px; text-align: center;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 9px 6px; font-size: 15px; font-weight: 600;
+  }
+  .count-input:focus { outline: none; border-color: var(--accent); }
+  .exercise.done .count-input { border-color: var(--done); color: #b9f5cf; }
+  .del-btn { color: var(--danger); border-color: transparent; background: transparent; padding: 6px 8px; }
+
+  /* Add rows */
+  .add-row { padding: 10px 14px; display: flex; gap: 8px; }
+  .add-row input {
+    flex: 1; background: var(--bg); border: 1px dashed var(--border); color: var(--text);
+    border-radius: 10px; padding: 9px 10px; font-size: 14px;
+  }
+  .add-cat { margin: 4px 0 20px; }
+  .add-cat .add-row { padding: 0; }
+
+  .muted { color: var(--muted); }
+  .hidden { display: none !important; }
+
+  /* Edit mode banner */
+  .edit-banner {
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
+    font-size: 13px; display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Modal (history) */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+  }
+  .sheet {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 18px 18px 0 0; width: 100%; max-width: 620px;
+    max-height: 82vh; overflow-y: auto; padding: 16px;
+  }
+  .sheet h3 { margin: 0 0 12px; font-size: 17px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .hist-row {
+    display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+    border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px;
+    cursor: pointer; background: var(--panel-2);
+  }
+  .hist-row:active { background: var(--accent-dim); }
+  .hist-date { font-weight: 700; }
+  .hist-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .hist-badge {
+    margin-left: auto; background: var(--done-dim); color: var(--done);
+    border: 1px solid var(--done); border-radius: 999px; padding: 3px 10px;
+    font-size: 12px; font-weight: 700;
+  }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 16px; border-radius: 999px; font-size: 13px; z-index: 100;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  input:focus { outline: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="title-row">
+      <div class="title"><span class="emoji">💪</span>운동 기록</div>
+      <div class="header-actions">
+        <button class="icon ghost" id="btnHistory" title="지난 기록">📅</button>
+        <button class="icon ghost" id="btnEdit" title="편집">✏️</button>
+        <button class="icon ghost" id="btnMenu" title="더보기">⋯</button>
+      </div>
+    </div>
+    <div class="date-nav">
+      <button class="arrow ghost" id="prevDay">‹</button>
+      <div class="date-display" id="dateDisplay">
+        <div class="d-main" id="dateMain">—</div>
+        <div class="d-sub" id="dateSub"></div>
+        <input type="date" id="datePicker" />
+      </div>
+      <button class="arrow ghost" id="nextDay">›</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="edit-banner hidden" id="editBanner">
+    ✏️ 편집 모드 — 운동/부위 이름 변경, 삭제, 추가를 할 수 있어요.
+    <button class="small accent" id="editDone" style="margin-left:auto">완료</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat hl">
+      <div class="num" id="statDone">0</div>
+      <div class="lbl">오늘 한 운동</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statReps">0</div>
+      <div class="lbl">총 갯수</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statStreak">0</div>
+      <div class="lbl">연속 기록일</div>
+    </div>
+  </div>
+
+  <div id="categories"></div>
+
+  <div class="add-cat hidden" id="addCatWrap">
+    <div class="add-row">
+      <input type="text" id="newCatName" placeholder="새 부위 추가 (예: 하체)" />
+      <button class="accent" id="addCatBtn">＋ 부위</button>
+    </div>
+  </div>
+</div>
+
+<!-- History sheet -->
+<div class="overlay hidden" id="historyOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>📅 지난 기록</h3>
+      <button class="small ghost" id="closeHistory">닫기</button>
+    </div>
+    <div id="historyList"></div>
+    <div class="muted" id="historyEmpty" style="text-align:center; padding:20px;">아직 기록이 없어요.</div>
+  </div>
+</div>
+
+<!-- Menu sheet -->
+<div class="overlay hidden" id="menuOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>⋯ 더보기</h3>
+      <button class="small ghost" id="closeMenu">닫기</button>
+    </div>
+    <div class="row-actions">
+      <button id="exportBtn">⬇️ 백업 내보내기</button>
+      <button id="importBtn">⬆️ 백업 불러오기</button>
+      <button class="ghost" id="resetBtn" style="color:var(--danger)">전체 초기화</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" class="hidden" />
+    <p class="muted" style="font-size:12px; margin-top:16px;">
+      기록은 이 브라우저에만 저장돼요. 다른 기기/브라우저에서 보려면 백업 파일을 내보내서 옮기세요.
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "workout-tracker-v1";
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  // ---- Default seed (메모장에 있던 운동 그대로) ----
+  function seedData() {
+    const mk = (name) => ({ id: uid(), name });
+    return {
+      categories: [
+        { id: uid(), name: "복근", exercises: [
+          mk("VSitUp"), mk("CrossClimber"), mk("LegRaise"), mk("Plank"),
+          mk("KneeSitup"), mk("HangingLegRaise")
+        ]},
+        { id: uid(), name: "기타", exercises: [
+          mk("사레레"), mk("숄프"), mk("스쿼트"), mk("암컬"), mk("추감기"), mk("버피")
+        ]},
+        { id: uid(), name: "등", exercises: [ mk("턱걸이") ]},
+        { id: uid(), name: "가슴", exercises: [ mk("푸시업") ]},
+      ],
+      logs: {}  // { "YYYY-MM-DD": { exerciseId: numberOrString } }
+    };
+  }
+
+  // ---- State ----
+  let data = load();
+  let current = todayStr();
+  let editMode = false;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    const d = seedData();
+    save(d);
+    return d;
+  }
+  function save(d) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(d || data));
+  }
+
+  // ---- Date helpers ----
+  function todayStr() {
+    const d = new Date();
+    return fmt(d);
+  }
+  function fmt(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  function parse(s) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function shiftDay(s, delta) {
+    const d = parse(s);
+    d.setDate(d.getDate() + delta);
+    return fmt(d);
+  }
+  const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+  function prettyDate(s) {
+    const d = parse(s);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]})`;
+  }
+
+  // ---- Log accessors ----
+  function logFor(dateStr) {
+    return data.logs[dateStr] || {};
+  }
+  function setCount(dateStr, exId, val) {
+    if (!data.logs[dateStr]) data.logs[dateStr] = {};
+    const clean = String(val).trim();
+    if (clean === "") {
+      delete data.logs[dateStr][exId];
+      if (Object.keys(data.logs[dateStr]).length === 0) delete data.logs[dateStr];
+    } else {
+      data.logs[dateStr][exId] = clean;
+    }
+    save();
+    renderSummary();
+  }
+
+  // ---- Summary ----
+  function computeStreak() {
+    let streak = 0;
+    let cursor = todayStr();
+    // 오늘 기록이 없으면 어제부터 카운트 시작
+    if (!hasEntries(cursor)) cursor = shiftDay(cursor, -1);
+    while (hasEntries(cursor)) {
+      streak++;
+      cursor = shiftDay(cursor, -1);
+    }
+    return streak;
+  }
+  function hasEntries(dateStr) {
+    const log = data.logs[dateStr];
+    return log && Object.keys(log).length > 0;
+  }
+  function renderSummary() {
+    const log = logFor(current);
+    const done = Object.keys(log).length;
+    let reps = 0;
+    for (const k in log) {
+      const n = parseFloat(log[k]);
+      if (!isNaN(n)) reps += n;
+    }
+    document.getElementById("statDone").textContent = done;
+    document.getElementById("statReps").textContent = reps;
+    document.getElementById("statStreak").textContent = computeStreak();
+  }
+
+  // ---- Date UI ----
+  function renderDate() {
+    document.getElementById("dateMain").textContent = prettyDate(current);
+    const isToday = current === todayStr();
+    document.getElementById("dateSub").textContent = isToday ? "오늘" : current;
+    document.getElementById("dateDisplay").classList.toggle("today", isToday);
+    document.getElementById("datePicker").value = current;
+  }
+
+  // ---- Main render ----
+  function render() {
+    renderDate();
+    renderSummary();
+    const root = document.getElementById("categories");
+    root.innerHTML = "";
+    const log = logFor(current);
+
+    data.categories.forEach((cat) => {
+      const doneInCat = cat.exercises.filter(e => log[e.id] != null).length;
+      const el = document.createElement("div");
+      el.className = "category";
+
+      // head
+      const head = document.createElement("div");
+      head.className = "cat-head";
+      if (editMode) {
+        head.innerHTML = `<div class="cat-name"><input value="${escapeAttr(cat.name)}" /></div>`;
+        head.querySelector("input").addEventListener("change", (ev) => {
+          cat.name = ev.target.value.trim() || cat.name; save(); renderHistoryMaybe();
+        });
+        const delCat = document.createElement("button");
+        delCat.className = "small"; delCat.style.color = "var(--danger)";
+        delCat.textContent = "부위 삭제";
+        delCat.addEventListener("click", () => {
+          if (confirm(`"${cat.name}" 부위를 삭제할까요? (운동 목록도 함께 삭제)`)) {
+            data.categories = data.categories.filter(c => c.id !== cat.id);
+            save(); render();
+          }
+        });
+        head.appendChild(delCat);
+      } else {
+        head.innerHTML = `<div class="cat-name">${escapeHtml(cat.name)}</div>
+          <div class="cat-count">${doneInCat}/${cat.exercises.length}</div>`;
+      }
+      el.appendChild(head);
+
+      // exercises
+      cat.exercises.forEach((ex) => {
+        const row = document.createElement("div");
+        row.className = "exercise";
+        const val = log[ex.id] != null ? log[ex.id] : "";
+        if (val !== "" && !editMode) row.classList.add("done");
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "ex-name";
+        if (editMode) {
+          nameEl.innerHTML = `<input class="rename" value="${escapeAttr(ex.name)}" />`;
+          nameEl.querySelector("input").addEventListener("change", (ev) => {
+            ex.name = ev.target.value.trim() || ex.name; save();
+          });
+        } else {
+          nameEl.textContent = ex.name;
+        }
+        row.appendChild(nameEl);
+
+        if (editMode) {
+          const del = document.createElement("button");
+          del.className = "del-btn"; del.textContent = "삭제";
+          del.addEventListener("click", () => {
+            cat.exercises = cat.exercises.filter(e => e.id !== ex.id);
+            save(); render();
+          });
+          row.appendChild(del);
+        } else {
+          const inp = document.createElement("input");
+          inp.className = "count-input";
+          inp.type = "text";
+          inp.inputMode = "numeric";
+          inp.placeholder = "–";
+          inp.value = val;
+          const commit = (ev) => {
+            setCount(current, ex.id, ev.target.value);
+            row.classList.toggle("done", String(ev.target.value).trim() !== "");
+          };
+          inp.addEventListener("change", commit);
+          inp.addEventListener("blur", commit);
+          row.appendChild(inp);
+        }
+        el.appendChild(row);
+      });
+
+      // add exercise (edit mode)
+      if (editMode) {
+        const add = document.createElement("div");
+        add.className = "add-row";
+        add.innerHTML = `<input type="text" placeholder="운동 추가" />
+          <button class="small accent">＋</button>`;
+        const doAdd = () => {
+          const input = add.querySelector("input");
+          const name = input.value.trim();
+          if (name) {
+            cat.exercises.push({ id: uid(), name });
+            save(); render();
+          }
+        };
+        add.querySelector("button").addEventListener("click", doAdd);
+        add.querySelector("input").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") doAdd();
+        });
+        el.appendChild(add);
+      }
+
+      root.appendChild(el);
+    });
+  }
+
+  // ---- History ----
+  function renderHistoryMaybe() {
+    if (!document.getElementById("historyOverlay").classList.contains("hidden")) {
+      renderHistory();
+    }
+  }
+  function renderHistory() {
+    const list = document.getElementById("historyList");
+    const empty = document.getElementById("historyEmpty");
+    list.innerHTML = "";
+    const dates = Object.keys(data.logs).filter(d => hasEntries(d)).sort().reverse();
+    empty.classList.toggle("hidden", dates.length > 0);
+
+    dates.forEach((d) => {
+      const log = data.logs[d];
+      const count = Object.keys(log).length;
+      const names = exerciseNamesFor(log).slice(0, 4).join(", ");
+      const more = Object.keys(log).length > 4 ? " …" : "";
+      const row = document.createElement("div");
+      row.className = "hist-row";
+      row.innerHTML = `
+        <div>
+          <div class="hist-date">${prettyDate(d)}${d === todayStr() ? " · 오늘" : ""}</div>
+          <div class="hist-meta">${escapeHtml(names)}${more}</div>
+        </div>
+        <div class="hist-badge">${count}개</div>`;
+      row.addEventListener("click", () => {
+        current = d;
+        closeSheet("historyOverlay");
+        render();
+      });
+      list.appendChild(row);
+    });
+  }
+  function exerciseNamesFor(log) {
+    const map = {};
+    data.categories.forEach(c => c.exercises.forEach(e => { map[e.id] = e.name; }));
+    return Object.keys(log).map(id => map[id]).filter(Boolean);
+  }
+
+  // ---- Escaping ----
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  // ---- Toast ----
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+  }
+
+  // ---- Sheets ----
+  function openSheet(id) { document.getElementById(id).classList.remove("hidden"); }
+  function closeSheet(id) { document.getElementById(id).classList.add("hidden"); }
+
+  // ---- Export / Import ----
+  function exportData() {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `운동기록_${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("백업 파일을 내보냈어요");
+  }
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!parsed.categories || !parsed.logs) throw new Error("형식 오류");
+        data = parsed;
+        save();
+        render();
+        closeSheet("menuOverlay");
+        toast("백업을 불러왔어요");
+      } catch (e) {
+        alert("불러오기 실패: 올바른 백업 파일이 아니에요.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---- Events ----
+  document.getElementById("prevDay").addEventListener("click", () => { current = shiftDay(current, -1); render(); });
+  document.getElementById("nextDay").addEventListener("click", () => { current = shiftDay(current, 1); render(); });
+  document.getElementById("datePicker").addEventListener("change", (e) => {
+    if (e.target.value) { current = e.target.value; render(); }
+  });
+
+  document.getElementById("btnEdit").addEventListener("click", toggleEdit);
+  document.getElementById("editDone").addEventListener("click", toggleEdit);
+  function toggleEdit() {
+    editMode = !editMode;
+    document.getElementById("editBanner").classList.toggle("hidden", !editMode);
+    document.getElementById("addCatWrap").classList.toggle("hidden", !editMode);
+    render();
+  }
+
+  document.getElementById("addCatBtn").addEventListener("click", addCat);
+  document.getElementById("newCatName").addEventListener("keydown", (e) => { if (e.key === "Enter") addCat(); });
+  function addCat() {
+    const input = document.getElementById("newCatName");
+    const name = input.value.trim();
+    if (name) {
+      data.categories.push({ id: uid(), name, exercises: [] });
+      input.value = "";
+      save(); render();
+    }
+  }
+
+  document.getElementById("btnHistory").addEventListener("click", () => { renderHistory(); openSheet("historyOverlay"); });
+  document.getElementById("closeHistory").addEventListener("click", () => closeSheet("historyOverlay"));
+  document.getElementById("btnMenu").addEventListener("click", () => openSheet("menuOverlay"));
+  document.getElementById("closeMenu").addEventListener("click", () => closeSheet("menuOverlay"));
+
+  document.getElementById("exportBtn").addEventListener("click", exportData);
+  document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", (e) => {
+    if (e.target.files[0]) importData(e.target.files[0]);
+  });
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (confirm("모든 운동 목록과 기록을 초기화할까요? 되돌릴 수 없어요.")) {
+      data = seedData(); save(); closeSheet("menuOverlay"); render(); toast("초기화했어요");
+    }
+  });
+
+  // 오버레이 바깥 클릭 시 닫기
+  document.querySelectorAll(".overlay").forEach(ov => {
+    ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.add("hidden"); });
+  });
+
+  // ---- Go ----
+  render();
+})();
+</script>
+</body>
+</html>
