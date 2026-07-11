@@ -95,6 +95,9 @@
     background: var(--panel); border: 1px solid var(--border);
     border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
   }
+  .category.dragging { opacity: 0.55; }
+  .category.drag-over-before { border-top-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  .category.drag-over-after { border-bottom-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
   .cat-head {
     display: flex; align-items: center; gap: 8px;
     padding: 12px 14px; background: var(--panel-2);
@@ -106,6 +109,13 @@
     border-radius: 8px; padding: 5px 8px; font-size: 15px; font-weight: 700; width: 100%;
   }
   .cat-count { font-size: 12px; color: var(--muted); }
+  .drag-handle {
+    width: 32px; height: 32px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); cursor: grab; flex: 0 0 auto;
+    touch-action: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
 
   /* Exercise row */
   .exercise {
@@ -402,6 +412,9 @@
   let data = load();
   let current = todayStr();
   let editMode = false;
+  let draggingCatId = null;
+  let touchDropTargetId = null;
+  let touchDropAfter = false;
 
   function load() {
     try {
@@ -506,6 +519,39 @@
   }
 
   // ---- Main render ----
+  function clearCategoryDropClasses() {
+    document.querySelectorAll(".category").forEach(el => {
+      el.classList.remove("drag-over-before", "drag-over-after");
+    });
+  }
+  function clearCategoryDragClasses() {
+    document.querySelectorAll(".category").forEach(el => {
+      el.classList.remove("dragging", "drag-over-before", "drag-over-after");
+    });
+  }
+  function updateCategoryDropTarget(clientX, clientY) {
+    const target = document.elementFromPoint(clientX, clientY)?.closest(".category");
+    if (!target || !draggingCatId || target.dataset.catId === draggingCatId) return;
+    const rect = target.getBoundingClientRect();
+    touchDropTargetId = target.dataset.catId;
+    touchDropAfter = clientY > rect.top + rect.height / 2;
+    clearCategoryDropClasses();
+    target.classList.add(touchDropAfter ? "drag-over-after" : "drag-over-before");
+  }
+  function moveCategory(dragId, targetId, placeAfter) {
+    if (!dragId || !targetId || dragId === targetId) return;
+    const from = data.categories.findIndex(c => c.id === dragId);
+    const target = data.categories.findIndex(c => c.id === targetId);
+    if (from < 0 || target < 0) return;
+
+    const [moved] = data.categories.splice(from, 1);
+    let insertAt = data.categories.findIndex(c => c.id === targetId);
+    if (insertAt < 0) insertAt = data.categories.length;
+    if (placeAfter) insertAt += 1;
+    data.categories.splice(insertAt, 0, moved);
+    save();
+    render();
+  }
   function render() {
     if (!data.collapsed) data.collapsed = {};
     renderDate();
@@ -518,6 +564,7 @@
       const doneInCat = cat.exercises.filter(e => isCompletedValue(log[e.id])).length;
       const el = document.createElement("div");
       el.className = "category";
+      el.dataset.catId = cat.id;
       const isCollapsed = !editMode && !!data.collapsed[cat.id];
       if (isCollapsed) el.classList.add("collapsed");
 
@@ -526,7 +573,49 @@
       head.className = "cat-head";
       let countEl = null;
       if (editMode) {
-        head.innerHTML = `<div class="cat-name"><input value="${escapeAttr(cat.name)}" /></div>`;
+        head.innerHTML = `<button class="drag-handle ghost" type="button" draggable="true" title="순서 변경" aria-label="순서 변경">☰</button>
+          <div class="cat-name"><input value="${escapeAttr(cat.name)}" /></div>`;
+        const dragHandle = head.querySelector(".drag-handle");
+        dragHandle.addEventListener("dragstart", (ev) => {
+          draggingCatId = cat.id;
+          el.classList.add("dragging");
+          ev.dataTransfer.effectAllowed = "move";
+          ev.dataTransfer.setData("text/plain", cat.id);
+        });
+        dragHandle.addEventListener("pointerdown", (ev) => {
+          if (ev.pointerType === "mouse") return;
+          ev.preventDefault();
+          draggingCatId = cat.id;
+          touchDropTargetId = null;
+          touchDropAfter = false;
+          el.classList.add("dragging");
+          dragHandle.setPointerCapture(ev.pointerId);
+        });
+        dragHandle.addEventListener("pointermove", (ev) => {
+          if (ev.pointerType === "mouse" || draggingCatId !== cat.id) return;
+          ev.preventDefault();
+          updateCategoryDropTarget(ev.clientX, ev.clientY);
+        });
+        dragHandle.addEventListener("pointerup", (ev) => {
+          if (ev.pointerType === "mouse" || draggingCatId !== cat.id) return;
+          ev.preventDefault();
+          const dragId = draggingCatId;
+          const targetId = touchDropTargetId;
+          const placeAfter = touchDropAfter;
+          draggingCatId = null;
+          touchDropTargetId = null;
+          clearCategoryDragClasses();
+          if (targetId) moveCategory(dragId, targetId, placeAfter);
+        });
+        dragHandle.addEventListener("pointercancel", () => {
+          draggingCatId = null;
+          touchDropTargetId = null;
+          clearCategoryDragClasses();
+        });
+        dragHandle.addEventListener("dragend", () => {
+          draggingCatId = null;
+          clearCategoryDragClasses();
+        });
         head.querySelector("input").addEventListener("change", (ev) => {
           cat.name = ev.target.value.trim() || cat.name; save(); renderHistoryMaybe();
         });
@@ -548,6 +637,27 @@
         head.addEventListener("click", () => {
           data.collapsed[cat.id] = !data.collapsed[cat.id];
           save(); render();
+        });
+      }
+      if (editMode) {
+        el.addEventListener("dragover", (ev) => {
+          if (!draggingCatId || draggingCatId === cat.id) return;
+          ev.preventDefault();
+          const placeAfter = ev.clientY > el.getBoundingClientRect().top + el.offsetHeight / 2;
+          clearCategoryDropClasses();
+          el.classList.add(placeAfter ? "drag-over-after" : "drag-over-before");
+          ev.dataTransfer.dropEffect = "move";
+        });
+        el.addEventListener("dragleave", () => {
+          el.classList.remove("drag-over-before", "drag-over-after");
+        });
+        el.addEventListener("drop", (ev) => {
+          if (!draggingCatId || draggingCatId === cat.id) return;
+          ev.preventDefault();
+          const placeAfter = ev.clientY > el.getBoundingClientRect().top + el.offsetHeight / 2;
+          const dragId = ev.dataTransfer.getData("text/plain") || draggingCatId;
+          draggingCatId = null;
+          moveCategory(dragId, cat.id, placeAfter);
         });
       }
       el.appendChild(head);
