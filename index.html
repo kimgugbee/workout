@@ -515,6 +515,7 @@
       // head
       const head = document.createElement("div");
       head.className = "cat-head";
+      let countEl = null;
       if (editMode) {
         head.innerHTML = `<div class="cat-name"><input value="${escapeAttr(cat.name)}" /></div>`;
         head.querySelector("input").addEventListener("change", (ev) => {
@@ -534,12 +535,21 @@
         head.innerHTML = `<span class="chev">▾</span>
           <div class="cat-name">${escapeHtml(cat.name)}</div>
           <div class="cat-count">${doneInCat}/${cat.exercises.length}</div>`;
+        countEl = head.querySelector(".cat-count");
         head.addEventListener("click", () => {
           data.collapsed[cat.id] = !data.collapsed[cat.id];
           save(); render();
         });
       }
       el.appendChild(head);
+
+      // 헤더의 n/m 카운트만 즉시 갱신 (전체 재렌더 없이)
+      const updateCatCount = () => {
+        if (!countEl) return;
+        const l = logFor(current);
+        const done = cat.exercises.filter(e => l[e.id] != null).length;
+        countEl.textContent = `${done}/${cat.exercises.length}`;
+      };
 
       // exercises
       if (!isCollapsed) cat.exercises.forEach((ex) => {
@@ -581,6 +591,7 @@
           const commit = () => {
             setCount(current, ex.id, inp.value);
             row.classList.toggle("done", String(inp.value).trim() !== "");
+            updateCatCount();
           };
           inp.addEventListener("change", commit);
           inp.addEventListener("blur", commit);
