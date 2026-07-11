@@ -40,7 +40,7 @@
   .header-inner { max-width: 620px; margin: 0 auto; padding: 12px 16px; }
   .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .brand { display: flex; align-items: center; gap: 8px; user-select: none; cursor: pointer; }
-  .brand-mark { font-size: 20px; line-height: 1; }
+  .brand-logo { width: 28px; height: 28px; object-fit: contain; display: block; }
   .brand-text { font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
   .brand-accent { color: inherit; }
   .header-actions { display: flex; gap: 6px; }
@@ -250,7 +250,7 @@
   <div class="header-inner">
     <div class="title-row">
       <div class="brand" id="brand" title="새로고침">
-        <span class="brand-mark">💪</span>
+        <img class="brand-logo" src="assets/images/workoutlog_logo.png" alt="" />
         <span class="brand-text">WORKOUT<span class="brand-accent">-LOG</span></span>
       </div>
       <div class="header-actions">
@@ -446,12 +446,21 @@
   function logFor(dateStr) {
     return data.logs[dateStr] || {};
   }
+  function isCompletedValue(val) {
+    const clean = String(val ?? "").trim();
+    if (clean === "") return false;
+    const n = Number(clean);
+    return Number.isNaN(n) ? true : n > 0;
+  }
+  function completedIds(log) {
+    return Object.keys(log || {}).filter(id => isCompletedValue(log[id]));
+  }
   function setCount(dateStr, exId, val) {
     if (!data.logs[dateStr]) data.logs[dateStr] = {};
     const clean = String(val).trim();
-    if (clean === "") {
+    if (!isCompletedValue(clean)) {
       delete data.logs[dateStr][exId];
-      if (Object.keys(data.logs[dateStr]).length === 0) delete data.logs[dateStr];
+      if (completedIds(data.logs[dateStr]).length === 0) delete data.logs[dateStr];
     } else {
       data.logs[dateStr][exId] = clean;
     }
@@ -473,15 +482,15 @@
   }
   function hasEntries(dateStr) {
     const log = data.logs[dateStr];
-    return log && Object.keys(log).length > 0;
+    return completedIds(log).length > 0;
   }
   function renderSummary() {
     const log = logFor(current);
-    const done = Object.keys(log).length;
+    const done = completedIds(log).length;
     let reps = 0;
     for (const k in log) {
       const n = parseFloat(log[k]);
-      if (!isNaN(n)) reps += n;
+      if (isCompletedValue(log[k]) && !isNaN(n)) reps += n;
     }
     document.getElementById("statDone").textContent = done;
     document.getElementById("statReps").textContent = reps;
@@ -506,7 +515,7 @@
     const log = logFor(current);
 
     data.categories.forEach((cat) => {
-      const doneInCat = cat.exercises.filter(e => log[e.id] != null).length;
+      const doneInCat = cat.exercises.filter(e => isCompletedValue(log[e.id])).length;
       const el = document.createElement("div");
       el.className = "category";
       const isCollapsed = !editMode && !!data.collapsed[cat.id];
@@ -547,7 +556,7 @@
       const updateCatCount = () => {
         if (!countEl) return;
         const l = logFor(current);
-        const done = cat.exercises.filter(e => l[e.id] != null).length;
+        const done = cat.exercises.filter(e => isCompletedValue(l[e.id])).length;
         countEl.textContent = `${done}/${cat.exercises.length}`;
       };
 
@@ -556,7 +565,7 @@
         const row = document.createElement("div");
         row.className = "exercise";
         const val = log[ex.id] != null ? log[ex.id] : "";
-        if (val !== "" && !editMode) row.classList.add("done");
+        if (isCompletedValue(val) && !editMode) row.classList.add("done");
 
         const nameEl = document.createElement("div");
         nameEl.className = "ex-name";
@@ -590,7 +599,7 @@
           inp.value = val;
           const commit = () => {
             setCount(current, ex.id, inp.value);
-            row.classList.toggle("done", String(inp.value).trim() !== "");
+            row.classList.toggle("done", isCompletedValue(inp.value));
             updateCatCount();
           };
           inp.addEventListener("change", commit);
@@ -658,9 +667,10 @@
 
     dates.forEach((d) => {
       const log = data.logs[d];
-      const count = Object.keys(log).length;
+      const ids = completedIds(log);
+      const count = ids.length;
       const names = exerciseNamesFor(log).slice(0, 4).join(", ");
-      const more = Object.keys(log).length > 4 ? " …" : "";
+      const more = ids.length > 4 ? " …" : "";
       const row = document.createElement("div");
       row.className = "hist-row";
       row.innerHTML = `
@@ -680,7 +690,7 @@
   function exerciseNamesFor(log) {
     const map = {};
     data.categories.forEach(c => c.exercises.forEach(e => { map[e.id] = e.name; }));
-    return Object.keys(log).map(id => map[id]).filter(Boolean);
+    return completedIds(log).map(id => map[id]).filter(Boolean);
   }
 
   // ---- Escaping ----
