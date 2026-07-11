@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>운동 기록</title>
+<title>WORKOUT-LOG</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -39,8 +39,10 @@
   }
   .header-inner { max-width: 620px; margin: 0 auto; padding: 12px 16px; }
   .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-  .title .emoji { margin-right: 6px; }
+  .brand { display: flex; align-items: center; gap: 8px; user-select: none; }
+  .brand-mark { font-size: 20px; line-height: 1; }
+  .brand-text { font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--text); }
+  .brand-accent { color: var(--accent); }
   .header-actions { display: flex; gap: 6px; }
 
   .date-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
@@ -58,9 +60,9 @@
   .date-display .d-main { font-size: 16px; font-weight: 700; }
   .date-display .d-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .date-display.today { border-color: var(--accent); }
-  .date-display input[type="date"] {
-    position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
-    border: none; cursor: pointer;
+  .date-caret {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 12px;
   }
 
   /* Buttons */
@@ -107,11 +109,11 @@
 
   /* Exercise row */
   .exercise {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 10px 14px; border-bottom: 1px solid var(--border);
   }
   .exercise:last-child { border-bottom: none; }
-  .ex-name { flex: 1; font-size: 15px; }
+  .ex-name { flex: 1 1 auto; min-width: 88px; font-size: 15px; }
   .exercise.done { background: var(--done-dim); }
   .exercise.done .ex-name { color: #cfeedd; }
   .ex-name input.rename {
@@ -125,6 +127,50 @@
   }
   .count-input:focus { outline: none; border-color: var(--accent); }
   .exercise.done .count-input { border-color: var(--done); color: #b9f5cf; }
+  .count-ctrl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .quick { display: flex; gap: 4px; }
+  .qbtn {
+    min-width: 36px; padding: 8px 7px; font-size: 12px; font-weight: 700;
+    border-radius: 9px; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+  }
+  .qbtn:active { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+
+  /* Accordion chevron */
+  .cat-head .chev {
+    width: 12px; text-align: center; font-size: 11px; color: var(--muted);
+    transition: transform .15s; flex: 0 0 auto;
+  }
+  .category.collapsed .chev { transform: rotate(-90deg); }
+
+  /* Calendar */
+  .cal-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .cal-title { flex: 1; text-align: center; font-weight: 700; font-size: 16px; }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 6px;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell {
+    min-height: 42px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; font-size: 14px; color: var(--text); cursor: pointer;
+    background: transparent; border: 1px solid transparent;
+  }
+  .cal-cell.blank { visibility: hidden; cursor: default; }
+  .cal-cell.has { background: var(--done-dim); color: #cfeedd; font-weight: 700; }
+  .cal-cell.today { border-color: var(--accent); }
+  .cal-cell.selected, .cal-cell.selected.has { background: var(--accent); color: #fff; font-weight: 700; }
+  .cal-legend {
+    display: flex; align-items: center; gap: 16px; justify-content: center;
+    font-size: 12px; color: var(--muted); margin-top: 14px;
+  }
+  .cal-legend .lg-dot {
+    display: inline-block; width: 12px; height: 12px; border-radius: 4px;
+    vertical-align: -1px; margin-right: 4px;
+  }
+  .lg-dot.has { background: var(--done-dim); border: 1px solid var(--done); }
+  .lg-dot.today { background: transparent; border: 1px solid var(--accent); }
+  .cal-today-btn { width: 100%; margin-top: 12px; }
   .del-btn { color: var(--danger); border-color: transparent; background: transparent; padding: 6px 8px; }
 
   /* Add rows */
@@ -186,7 +232,10 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <div class="title"><span class="emoji">💪</span>운동 기록</div>
+      <div class="brand">
+        <span class="brand-mark">💪</span>
+        <span class="brand-text">WORKOUT<span class="brand-accent">-LOG</span></span>
+      </div>
       <div class="header-actions">
         <button class="icon ghost" id="btnHistory" title="지난 기록">📅</button>
         <button class="icon ghost" id="btnEdit" title="편집">✏️</button>
@@ -195,10 +244,10 @@
     </div>
     <div class="date-nav">
       <button class="arrow ghost" id="prevDay">‹</button>
-      <div class="date-display" id="dateDisplay">
+      <div class="date-display" id="dateDisplay" title="탭하여 달력 열기">
         <div class="d-main" id="dateMain">—</div>
         <div class="d-sub" id="dateSub"></div>
-        <input type="date" id="datePicker" />
+        <span class="date-caret">▾</span>
       </div>
       <button class="arrow ghost" id="nextDay">›</button>
     </div>
@@ -248,6 +297,30 @@
   </div>
 </div>
 
+<!-- Calendar sheet -->
+<div class="overlay hidden" id="calOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>📆 날짜 선택</h3>
+      <button class="small ghost" id="closeCal">닫기</button>
+    </div>
+    <div class="cal-nav">
+      <button class="arrow ghost" id="calPrev">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="arrow ghost" id="calNext">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend">
+      <span><span class="lg-dot has"></span>기록 있음</span>
+      <span><span class="lg-dot today"></span>오늘</span>
+    </div>
+    <button class="cal-today-btn" id="calToday">오늘로 이동</button>
+  </div>
+</div>
+
 <!-- Menu sheet -->
 <div class="overlay hidden" id="menuOverlay">
   <div class="sheet">
@@ -285,13 +358,15 @@
           mk("VSitUp"), mk("CrossClimber"), mk("LegRaise"), mk("Plank"),
           mk("KneeSitup"), mk("HangingLegRaise")
         ]},
-        { id: uid(), name: "기타", exercises: [
-          mk("사레레"), mk("숄프"), mk("스쿼트"), mk("암컬"), mk("추감기"), mk("버피")
-        ]},
-        { id: uid(), name: "등", exercises: [ mk("턱걸이") ]},
         { id: uid(), name: "가슴", exercises: [ mk("푸시업") ]},
+        { id: uid(), name: "등", exercises: [ mk("턱걸이") ]},
+        { id: uid(), name: "어깨", exercises: [ mk("사레레"), mk("숄프") ]},
+        { id: uid(), name: "팔", exercises: [ mk("암컬"), mk("추감기") ]},
+        { id: uid(), name: "하체", exercises: [ mk("스쿼트") ]},
+        { id: uid(), name: "유산소", exercises: [ mk("버피") ]},
       ],
-      logs: {}  // { "YYYY-MM-DD": { exerciseId: numberOrString } }
+      logs: {},  // { "YYYY-MM-DD": { exerciseId: numberOrString } }
+      collapsed: {}  // { categoryId: true }  아코디언 접힘 상태
     };
   }
 
@@ -391,11 +466,11 @@
     const isToday = current === todayStr();
     document.getElementById("dateSub").textContent = isToday ? "오늘" : current;
     document.getElementById("dateDisplay").classList.toggle("today", isToday);
-    document.getElementById("datePicker").value = current;
   }
 
   // ---- Main render ----
   function render() {
+    if (!data.collapsed) data.collapsed = {};
     renderDate();
     renderSummary();
     const root = document.getElementById("categories");
@@ -406,6 +481,8 @@
       const doneInCat = cat.exercises.filter(e => log[e.id] != null).length;
       const el = document.createElement("div");
       el.className = "category";
+      const isCollapsed = !editMode && !!data.collapsed[cat.id];
+      if (isCollapsed) el.classList.add("collapsed");
 
       // head
       const head = document.createElement("div");
@@ -426,13 +503,18 @@
         });
         head.appendChild(delCat);
       } else {
-        head.innerHTML = `<div class="cat-name">${escapeHtml(cat.name)}</div>
+        head.innerHTML = `<span class="chev">▾</span>
+          <div class="cat-name">${escapeHtml(cat.name)}</div>
           <div class="cat-count">${doneInCat}/${cat.exercises.length}</div>`;
+        head.addEventListener("click", () => {
+          data.collapsed[cat.id] = !data.collapsed[cat.id];
+          save(); render();
+        });
       }
       el.appendChild(head);
 
       // exercises
-      cat.exercises.forEach((ex) => {
+      if (!isCollapsed) cat.exercises.forEach((ex) => {
         const row = document.createElement("div");
         row.className = "exercise";
         const val = log[ex.id] != null ? log[ex.id] : "";
@@ -459,19 +541,40 @@
           });
           row.appendChild(del);
         } else {
+          const ctrl = document.createElement("div");
+          ctrl.className = "count-ctrl";
+
           const inp = document.createElement("input");
           inp.className = "count-input";
           inp.type = "text";
           inp.inputMode = "numeric";
           inp.placeholder = "–";
           inp.value = val;
-          const commit = (ev) => {
-            setCount(current, ex.id, ev.target.value);
-            row.classList.toggle("done", String(ev.target.value).trim() !== "");
+          const commit = () => {
+            setCount(current, ex.id, inp.value);
+            row.classList.toggle("done", String(inp.value).trim() !== "");
           };
           inp.addEventListener("change", commit);
           inp.addEventListener("blur", commit);
-          row.appendChild(inp);
+
+          const quick = document.createElement("div");
+          quick.className = "quick";
+          [1, 5, 10].forEach((step) => {
+            const b = document.createElement("button");
+            b.className = "qbtn";
+            b.type = "button";
+            b.textContent = "+" + step;
+            b.addEventListener("click", () => {
+              const cur = parseFloat(inp.value);
+              inp.value = String((isNaN(cur) ? 0 : cur) + step);
+              commit();
+            });
+            quick.appendChild(b);
+          });
+
+          ctrl.appendChild(quick);
+          ctrl.appendChild(inp);
+          row.appendChild(ctrl);
         }
         el.appendChild(row);
       });
@@ -595,9 +698,50 @@
   // ---- Events ----
   document.getElementById("prevDay").addEventListener("click", () => { current = shiftDay(current, -1); render(); });
   document.getElementById("nextDay").addEventListener("click", () => { current = shiftDay(current, 1); render(); });
-  document.getElementById("datePicker").addEventListener("change", (e) => {
-    if (e.target.value) { current = e.target.value; render(); }
-  });
+
+  // ---- Calendar ----
+  let calMonth; // 보고 있는 달의 1일 (Date)
+  function openCalendar() {
+    const c = parse(current);
+    calMonth = new Date(c.getFullYear(), c.getMonth(), 1);
+    renderCalendar();
+    openSheet("calOverlay");
+  }
+  function renderCalendar() {
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    document.getElementById("calTitle").textContent = `${y}년 ${m + 1}월`;
+    const grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    for (let i = 0; i < firstDow; i++) {
+      const b = document.createElement("div");
+      b.className = "cal-cell blank";
+      grid.appendChild(b);
+    }
+    const today = todayStr();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = fmt(new Date(y, m, d));
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cal-cell";
+      cell.textContent = d;
+      if (hasEntries(ds)) cell.classList.add("has");
+      if (ds === today) cell.classList.add("today");
+      if (ds === current) cell.classList.add("selected");
+      cell.addEventListener("click", () => {
+        current = ds;
+        closeSheet("calOverlay");
+        render();
+      });
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById("dateDisplay").addEventListener("click", openCalendar);
+  document.getElementById("closeCal").addEventListener("click", () => closeSheet("calOverlay"));
+  document.getElementById("calPrev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
+  document.getElementById("calNext").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
+  document.getElementById("calToday").addEventListener("click", () => { current = todayStr(); closeSheet("calOverlay"); render(); });
 
   document.getElementById("btnEdit").addEventListener("click", toggleEdit);
   document.getElementById("editDone").addEventListener("click", toggleEdit);
