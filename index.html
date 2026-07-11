@@ -283,7 +283,7 @@
 
 <div class="wrap">
   <div class="edit-banner hidden" id="editBanner">
-    ✏️ 편집 모드 — 운동/부위 이름 변경, 삭제, 추가를 할 수 있어요.
+    ✏️ 편집 모드 — 운동/부위 이름 변경, 삭제, 추가와 ☰ 드래그 순서 변경을 할 수 있어요.
     <button class="small accent" id="editDone" style="margin-left:auto">완료</button>
   </div>
 
@@ -413,8 +413,8 @@
   let current = todayStr();
   let editMode = false;
   let draggingCatId = null;
-  let touchDropTargetId = null;
-  let touchDropAfter = false;
+  let dragDropTargetId = null;
+  let dragDropAfter = false;
 
   function load() {
     try {
@@ -531,12 +531,17 @@
   }
   function updateCategoryDropTarget(clientX, clientY) {
     const target = document.elementFromPoint(clientX, clientY)?.closest(".category");
-    if (!target || !draggingCatId || target.dataset.catId === draggingCatId) return;
+    if (!target || !draggingCatId) return;
+    if (target.dataset.catId === draggingCatId) {
+      dragDropTargetId = null;
+      clearCategoryDropClasses();
+      return;
+    }
     const rect = target.getBoundingClientRect();
-    touchDropTargetId = target.dataset.catId;
-    touchDropAfter = clientY > rect.top + rect.height / 2;
+    dragDropTargetId = target.dataset.catId;
+    dragDropAfter = clientY > rect.top + rect.height / 2;
     clearCategoryDropClasses();
-    target.classList.add(touchDropAfter ? "drag-over-after" : "drag-over-before");
+    target.classList.add(dragDropAfter ? "drag-over-after" : "drag-over-before");
   }
   function moveCategory(dragId, targetId, placeAfter) {
     if (!dragId || !targetId || dragId === targetId) return;
@@ -573,47 +578,37 @@
       head.className = "cat-head";
       let countEl = null;
       if (editMode) {
-        head.innerHTML = `<button class="drag-handle ghost" type="button" draggable="true" title="순서 변경" aria-label="순서 변경">☰</button>
+        head.innerHTML = `<button class="drag-handle ghost" type="button" title="순서 변경" aria-label="순서 변경">☰</button>
           <div class="cat-name"><input value="${escapeAttr(cat.name)}" /></div>`;
         const dragHandle = head.querySelector(".drag-handle");
-        dragHandle.addEventListener("dragstart", (ev) => {
-          draggingCatId = cat.id;
-          el.classList.add("dragging");
-          ev.dataTransfer.effectAllowed = "move";
-          ev.dataTransfer.setData("text/plain", cat.id);
-        });
         dragHandle.addEventListener("pointerdown", (ev) => {
-          if (ev.pointerType === "mouse") return;
+          if (ev.button != null && ev.button !== 0) return;
           ev.preventDefault();
           draggingCatId = cat.id;
-          touchDropTargetId = null;
-          touchDropAfter = false;
+          dragDropTargetId = null;
+          dragDropAfter = false;
           el.classList.add("dragging");
           dragHandle.setPointerCapture(ev.pointerId);
         });
         dragHandle.addEventListener("pointermove", (ev) => {
-          if (ev.pointerType === "mouse" || draggingCatId !== cat.id) return;
+          if (draggingCatId !== cat.id) return;
           ev.preventDefault();
           updateCategoryDropTarget(ev.clientX, ev.clientY);
         });
         dragHandle.addEventListener("pointerup", (ev) => {
-          if (ev.pointerType === "mouse" || draggingCatId !== cat.id) return;
+          if (draggingCatId !== cat.id) return;
           ev.preventDefault();
           const dragId = draggingCatId;
-          const targetId = touchDropTargetId;
-          const placeAfter = touchDropAfter;
+          const targetId = dragDropTargetId;
+          const placeAfter = dragDropAfter;
           draggingCatId = null;
-          touchDropTargetId = null;
+          dragDropTargetId = null;
           clearCategoryDragClasses();
           if (targetId) moveCategory(dragId, targetId, placeAfter);
         });
         dragHandle.addEventListener("pointercancel", () => {
           draggingCatId = null;
-          touchDropTargetId = null;
-          clearCategoryDragClasses();
-        });
-        dragHandle.addEventListener("dragend", () => {
-          draggingCatId = null;
+          dragDropTargetId = null;
           clearCategoryDragClasses();
         });
         head.querySelector("input").addEventListener("change", (ev) => {
@@ -637,27 +632,6 @@
         head.addEventListener("click", () => {
           data.collapsed[cat.id] = !data.collapsed[cat.id];
           save(); render();
-        });
-      }
-      if (editMode) {
-        el.addEventListener("dragover", (ev) => {
-          if (!draggingCatId || draggingCatId === cat.id) return;
-          ev.preventDefault();
-          const placeAfter = ev.clientY > el.getBoundingClientRect().top + el.offsetHeight / 2;
-          clearCategoryDropClasses();
-          el.classList.add(placeAfter ? "drag-over-after" : "drag-over-before");
-          ev.dataTransfer.dropEffect = "move";
-        });
-        el.addEventListener("dragleave", () => {
-          el.classList.remove("drag-over-before", "drag-over-after");
-        });
-        el.addEventListener("drop", (ev) => {
-          if (!draggingCatId || draggingCatId === cat.id) return;
-          ev.preventDefault();
-          const placeAfter = ev.clientY > el.getBoundingClientRect().top + el.offsetHeight / 2;
-          const dragId = ev.dataTransfer.getData("text/plain") || draggingCatId;
-          draggingCatId = null;
-          moveCategory(dragId, cat.id, placeAfter);
         });
       }
       el.appendChild(head);
