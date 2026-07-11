@@ -39,10 +39,10 @@
   }
   .header-inner { max-width: 620px; margin: 0 auto; padding: 12px 16px; }
   .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .brand { display: flex; align-items: center; gap: 8px; user-select: none; }
+  .brand { display: flex; align-items: center; gap: 8px; user-select: none; cursor: pointer; }
   .brand-mark { font-size: 20px; line-height: 1; }
-  .brand-text { font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--text); }
-  .brand-accent { color: var(--accent); }
+  .brand-text { font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
+  .brand-accent { color: inherit; }
   .header-actions { display: flex; gap: 6px; }
 
   .date-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
@@ -138,7 +138,7 @@
 
   /* Accordion chevron */
   .cat-head .chev {
-    width: 12px; text-align: center; font-size: 11px; color: var(--muted);
+    width: 18px; text-align: center; font-size: 16px; color: var(--muted);
     transition: transform .15s; flex: 0 0 auto;
   }
   .category.collapsed .chev { transform: rotate(-90deg); }
@@ -232,7 +232,7 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <div class="brand">
+      <div class="brand" id="brand" title="새로고침">
         <span class="brand-mark">💪</span>
         <span class="brand-text">WORKOUT<span class="brand-accent">-LOG</span></span>
       </div>
@@ -354,15 +354,15 @@
     const mk = (name) => ({ id: uid(), name });
     return {
       categories: [
+        { id: uid(), name: "등", exercises: [ mk("턱걸이") ]},
+        { id: uid(), name: "가슴", exercises: [ mk("푸시업") ]},
         { id: uid(), name: "복근", exercises: [
           mk("VSitUp"), mk("CrossClimber"), mk("LegRaise"), mk("Plank"),
           mk("KneeSitup"), mk("HangingLegRaise")
         ]},
-        { id: uid(), name: "가슴", exercises: [ mk("푸시업") ]},
-        { id: uid(), name: "등", exercises: [ mk("턱걸이") ]},
+        { id: uid(), name: "하체", exercises: [ mk("스쿼트") ]},
         { id: uid(), name: "어깨", exercises: [ mk("사레레"), mk("숄프") ]},
         { id: uid(), name: "팔", exercises: [ mk("암컬"), mk("추감기") ]},
-        { id: uid(), name: "하체", exercises: [ mk("스쿼트") ]},
         { id: uid(), name: "유산소", exercises: [ mk("버피") ]},
       ],
       logs: {},  // { "YYYY-MM-DD": { exerciseId: numberOrString } }
@@ -548,7 +548,7 @@
           inp.className = "count-input";
           inp.type = "text";
           inp.inputMode = "numeric";
-          inp.placeholder = "–";
+          inp.placeholder = "0";
           inp.value = val;
           const commit = () => {
             setCount(current, ex.id, inp.value);
@@ -696,6 +696,7 @@
   }
 
   // ---- Events ----
+  document.getElementById("brand").addEventListener("click", () => location.reload());
   document.getElementById("prevDay").addEventListener("click", () => { current = shiftDay(current, -1); render(); });
   document.getElementById("nextDay").addEventListener("click", () => { current = shiftDay(current, 1); render(); });
 
