@@ -26,7 +26,7 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     line-height: 1.4;
-    padding-bottom: 80px;
+    padding-bottom: 0;
   }
   .wrap { max-width: 620px; margin: 0 auto; padding: 16px; }
 
@@ -182,6 +182,23 @@
   .add-cat { margin: 4px 0 20px; }
   .add-cat .add-row { padding: 0; }
 
+  /* Coupang ad (site footer) */
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    margin-top: 24px;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .ad-slot {
+    margin: 0 auto; display: flex; flex-direction: column; align-items: center;
+    max-width: 100%; overflow: hidden;
+  }
+  .ad-slot iframe { max-width: 100%; border: 0; display: block; }
+  .ad-disclosure {
+    font-size: 11px; color: var(--muted); text-align: center;
+    margin: 8px 0 0; line-height: 1.4; max-width: 320px;
+  }
+
   .muted { color: var(--muted); }
   .hidden { display: none !important; }
 
@@ -283,7 +300,18 @@
       <button class="accent" id="addCatBtn">＋ 부위</button>
     </div>
   </div>
+
 </div>
+
+<!-- Coupang Partners ad (site footer) -->
+<footer class="site-footer">
+  <div class="ad-slot">
+    <iframe src="https://ads-partners.coupang.com/widgets.html?id=1005620&template=carousel&trackingCode=AF2815384&subId=&width=320&height=80&tsource="
+            width="320" height="80" frameborder="0" scrolling="no"
+            referrerpolicy="unsafe-url" browsingtopics></iframe>
+    <p class="ad-disclosure">이 배너는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+  </div>
+</footer>
 
 <!-- History sheet -->
 <div class="overlay hidden" id="historyOverlay">
